@@ -1,0 +1,2042 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Speedometer — Manik Roy</title>
+<meta name="description" content="Real-time GPS speedometer for walk, bus, train, plane, ship, car & more. By Manik Roy.">
+<meta name="theme-color" content="#00e5ff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Speedometer">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ─── CSS Variables / Themes ─────────────────────────────── */
+  :root {
+    --accent: #00e5ff;
+    --accent2: #ff6b35;
+    --needle: #ff3d00;
+    --font-display: 'Nunito', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'Nunito', sans-serif;
+    --radius: 16px;
+    --trans: 0.35s cubic-bezier(.4,0,.2,1);
+  }
+
+  [data-theme="dark"] {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --border: rgba(0,229,255,0.15);
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --dial-bg: #0d1117;
+    --dial-ring: rgba(0,229,255,0.2);
+    --glow: rgba(0,229,255,0.3);
+    --shadow: rgba(0,0,0,0.6);
+  }
+
+  [data-theme="light"] {
+    --bg: #f0f4f8;
+    --surface: #ffffff;
+    --surface2: #e8eef4;
+    --border: rgba(0,120,180,0.2);
+    --text: #1a202c;
+    --text-muted: #4a5568;
+    --dial-bg: #f7fafc;
+    --dial-ring: rgba(0,120,180,0.15);
+    --glow: rgba(0,120,180,0.2);
+    --shadow: rgba(0,0,0,0.15);
+    --accent: #0077b6;
+    --accent2: #e85d04;
+    --needle: #e63946;
+  }
+
+  [data-theme="oled"] {
+    --bg: #000000;
+    --surface: #000000;
+    --surface2: #080808;
+    --border: rgba(0,229,255,0.1);
+    --text: #ffffff;
+    --text-muted: #666666;
+    --dial-bg: #000000;
+    --dial-ring: rgba(0,229,255,0.12);
+    --glow: rgba(0,229,255,0.25);
+    --shadow: rgba(0,0,0,0.9);
+  }
+
+  [data-theme="hc"] {
+    --bg: #000000;
+    --surface: #000000;
+    --surface2: #111111;
+    --border: #ffff00;
+    --text: #ffffff;
+    --text-muted: #ffff00;
+    --dial-bg: #000000;
+    --dial-ring: #ffff00;
+    --glow: rgba(255,255,0,0.4);
+    --shadow: rgba(0,0,0,0.9);
+    --accent: #ffff00;
+    --accent2: #ff6b6b;
+    --needle: #ff0000;
+  }
+
+  /* ─── Reset & Base ───────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { font-size: 16px; scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: background var(--trans), color var(--trans);
+    overflow-x: hidden;
+  }
+
+  /* ─── Header ─────────────────────────────────────────────── */
+  header {
+    width: 100%;
+    max-width: 480px;
+    padding: 18px 20px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    transition: background var(--trans), border-color var(--trans);
+  }
+
+  .logo {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    text-shadow: 0 0 12px var(--glow);
+    text-transform: uppercase;
+  }
+
+  .logo span { color: var(--text-muted); font-weight: 400; font-size: 0.7rem; display: block; letter-spacing: 0.05em; margin-top: 1px; }
+
+  /* ─── Theme Toggle Cluster ───────────────────────────────── */
+  .theme-cluster {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+  }
+
+  .theme-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: var(--font-body);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    padding: 5px 9px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    text-transform: uppercase;
+  }
+
+  .theme-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .theme-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+    box-shadow: 0 0 10px var(--glow);
+  }
+
+  /* ─── Main Content ───────────────────────────────────────── */
+  main {
+    flex: 1;
+    width: 100%;
+    max-width: 480px;
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  /* ─── Mode Selector ──────────────────────────────────────── */
+  .mode-row {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .mode-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: all 0.25s;
+    flex: 1;
+    min-width: 56px;
+    max-width: 76px;
+  }
+
+  .mode-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+
+  .mode-btn.active {
+    border-color: var(--accent);
+    background: linear-gradient(135deg, var(--surface), color-mix(in srgb, var(--accent) 10%, var(--surface)));
+    box-shadow: 0 4px 20px var(--glow), inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+
+  .mode-btn .icon { font-size: 1.6rem; line-height: 1; }
+  .mode-btn .label {
+    font-family: var(--font-body);
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .mode-btn.active .label { color: var(--accent); }
+
+  /* ─── Speedometer Dial ───────────────────────────────────── */
+  .dial-wrap {
+    position: relative;
+    width: min(320px, 88vw);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .dial-svg {
+    width: 100%;
+    height: auto;
+    filter: drop-shadow(0 0 20px var(--glow));
+    transition: filter var(--trans);
+    display: block;
+  }
+
+  /* Speed readout — sits BELOW the SVG, never overlaps needle */
+  .dial-readout {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    margin-top: -8px;
+    padding: 10px 28px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0 0 20px 20px;
+    width: 80%;
+    transition: background var(--trans), border-color var(--trans);
+  }
+
+  .speed-value {
+    font-family: var(--font-display);
+    font-size: clamp(2.4rem, 11vw, 3.8rem);
+    font-weight: 900;
+    color: var(--text);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    transition: color var(--trans);
+  }
+
+  .speed-unit {
+    font-family: var(--font-body);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .speed-mode-label {
+    font-family: var(--font-body);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  /* ─── Settings Drawer ────────────────────────────────────── */
+  .settings-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(4px);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .settings-overlay.open { opacity: 1; pointer-events: auto; }
+
+  .settings-drawer {
+    position: fixed; bottom: 0; left: 50%; z-index: 201;
+    transform: translateX(-50%) translateY(100%);
+    width: 100%; max-width: 480px;
+    background: var(--surface);
+    border-radius: 24px 24px 0 0;
+    border-top: 1px solid var(--border);
+    padding: 0 0 env(safe-area-inset-bottom);
+    transition: transform 0.4s cubic-bezier(.34,1.3,.64,1);
+    max-height: 90dvh;
+    overflow-y: auto;
+  }
+  .settings-drawer.open { transform: translateX(-50%) translateY(0); }
+
+  .drawer-handle {
+    width: 40px; height: 4px;
+    background: var(--border);
+    border-radius: 99px;
+    margin: 12px auto 0;
+  }
+  .drawer-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .drawer-title {
+    font-size: 1rem; font-weight: 800; letter-spacing: 0.03em;
+    color: var(--text);
+  }
+  .drawer-close {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 10px;
+    color: var(--text-muted); cursor: pointer; font-size: 0.8rem;
+    transition: all 0.2s;
+  }
+  .drawer-close:hover { border-color: var(--accent); color: var(--accent); }
+
+  .drawer-body { padding: 16px 20px 24px; display: flex; flex-direction: column; gap: 20px; }
+
+  .setting-group { display: flex; flex-direction: column; gap: 10px; }
+  .setting-group-title {
+    font-size: 0.65rem; font-weight: 800; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--accent);
+    padding-bottom: 4px; border-bottom: 1px solid var(--border);
+  }
+  .setting-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px;
+  }
+  .setting-label {
+    font-size: 0.82rem; font-weight: 600; color: var(--text);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .setting-label small { font-size: 0.65rem; color: var(--text-muted); display: block; margin-top: 1px; }
+
+  /* Country speed preset grid */
+  .country-grid {
+    display: grid; grid-template-columns: repeat(3,1fr); gap: 7px;
+  }
+  .country-btn {
+    padding: 8px 6px; border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text); font-size: 0.72rem; font-weight: 700;
+    cursor: pointer; text-align: center; transition: all 0.2s;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .country-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .country-btn .cflag { font-size: 1.2rem; }
+  .country-btn .cname { font-size: 0.55rem; font-weight: 600; color: var(--text-muted); }
+  .country-btn .climit { font-size: 0.65rem; color: var(--accent); }
+
+  /* Select dropdown */
+  .setting-select {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 8px;
+    padding: 7px 10px; font-size: 0.8rem; font-family: var(--font-body);
+    cursor: pointer; outline: none; min-width: 110px;
+    transition: border-color 0.2s;
+  }
+  .setting-select:focus { border-color: var(--accent); }
+
+  /* ─── Header action buttons (settings, fullscreen, wake) ─── */
+  .header-actions {
+    display: flex; gap: 6px; align-items: center;
+  }
+  .hdr-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text-muted); border-radius: 8px;
+    padding: 6px 9px; font-size: 0.9rem; cursor: pointer;
+    transition: all 0.2s; line-height: 1;
+  }
+  .hdr-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .hdr-btn.active { background: var(--accent); border-color: var(--accent); color: #000; }
+
+  /* ─── PWA Install Banner ─────────────────────────────────── */
+  .pwa-banner {
+    width: 100%; background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 14px; padding: 12px 14px;
+    display: none; align-items: center; gap: 10px;
+    box-shadow: 0 4px 20px var(--glow);
+  }
+  .pwa-banner.show { display: flex; }
+  .pwa-icon { font-size: 1.8rem; flex-shrink: 0; }
+  .pwa-text { flex: 1; }
+  .pwa-text strong { font-size: 0.82rem; font-weight: 800; display: block; }
+  .pwa-text span { font-size: 0.68rem; color: var(--text-muted); }
+  .pwa-install-btn {
+    background: var(--accent); border: none; border-radius: 8px;
+    color: #000; font-weight: 800; font-size: 0.75rem;
+    padding: 8px 14px; cursor: pointer; white-space: nowrap;
+    font-family: var(--font-body); transition: filter 0.2s;
+    flex-shrink: 0;
+  }
+  .pwa-install-btn:hover { filter: brightness(1.1); }
+  .pwa-dismiss-btn {
+    background: none; border: none; color: var(--text-muted);
+    font-size: 1rem; cursor: pointer; padding: 4px; flex-shrink: 0;
+  }
+
+  /* ─── Share / Trip Summary ───────────────────────────────── */
+  .share-btn {
+    width: 100%; padding: 13px;
+    border-radius: 12px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text);
+    font-family: var(--font-body); font-size: 0.85rem; font-weight: 700;
+    letter-spacing: 0.05em; cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .share-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ─── Fullscreen body tweak ──────────────────────────────── */
+  :fullscreen body, :-webkit-full-screen body { background: var(--bg); }
+
+
+  .alert-banner {
+    width: 100%;
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: all 0.3s cubic-bezier(.4,0,.2,1);
+    pointer-events: none;
+    border: 2px solid transparent;
+  }
+  .alert-banner.show {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+  .alert-banner.overspeed {
+    background: rgba(255, 61, 0, 0.12);
+    border-color: #ff3d00;
+    color: #ff3d00;
+    animation: alert-pulse 0.8s ease-in-out infinite alternate;
+  }
+  .alert-banner.gps-warn {
+    background: rgba(255, 193, 7, 0.12);
+    border-color: #ffc107;
+    color: #ffc107;
+  }
+  @keyframes alert-pulse {
+    from { background: rgba(255,61,0,0.08); box-shadow: none; }
+    to   { background: rgba(255,61,0,0.22); box-shadow: 0 0 18px rgba(255,61,0,0.4); }
+  }
+  .alert-icon { font-size: 1.3rem; flex-shrink: 0; }
+  .alert-text { flex: 1; }
+  .alert-dismiss {
+    background: none; border: none; color: inherit;
+    font-size: 1.1rem; cursor: pointer; opacity: 0.7; padding: 2px 4px;
+  }
+  .alert-dismiss:hover { opacity: 1; }
+
+  /* ─── Speed Limit Panel ──────────────────────────────────── */
+  .limit-panel {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    transition: background var(--trans), border-color var(--trans);
+  }
+  .limit-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .limit-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .limit-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+  /* iOS-style toggle switch */
+  .toggle-track {
+    width: 36px; height: 20px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .toggle-track.on { background: var(--accent); border-color: var(--accent); }
+  .toggle-thumb {
+    width: 14px; height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    position: absolute;
+    top: 2px; left: 2px;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+  .toggle-track.on .toggle-thumb { transform: translateX(16px); }
+
+  .limit-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .limit-value-display {
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: var(--accent);
+    min-width: 70px;
+    text-align: center;
+  }
+  .limit-value-display.disabled { color: var(--text-muted); }
+  .limit-unit-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 2px;
+  }
+  .limit-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 99px;
+    outline: none;
+    cursor: pointer;
+  }
+  .limit-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--glow);
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .limit-slider::-webkit-slider-thumb:active { transform: scale(1.2); }
+  .limit-slider:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .limit-presets {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .preset-btn {
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-muted);
+    font-size: 0.65rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .preset-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .preset-btn.active { background: var(--accent); border-color: var(--accent); color: #000; }
+
+  /* ─── Audio toggle in limit panel ───────────────────────── */
+  .alert-options {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .alert-opt {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    flex: 1;
+  }
+  .alert-opt.active { color: var(--accent); }
+
+  /* ─── Overspeed dial flash ───────────────────────────────── */
+  .dial-svg.overspeed {
+    filter: drop-shadow(0 0 20px var(--glow)) drop-shadow(0 0 30px rgba(255,61,0,0.6));
+  }
+
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    width: 100%;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 10px;
+    text-align: center;
+    transition: all var(--trans);
+  }
+
+  .stat-label {
+    font-family: var(--font-body);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+  }
+
+  .stat-value {
+    font-family: var(--font-mono);
+    font-size: 1.1rem;
+    color: var(--accent);
+  }
+
+  /* ─── Speed Bar ──────────────────────────────────────────── */
+  .bar-wrap {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+
+  .bar-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .bar-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .bar-pct {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--accent);
+  }
+
+  .bar-track {
+    height: 8px;
+    background: var(--surface2);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.4s cubic-bezier(.4,0,.2,1);
+    box-shadow: 0 0 8px var(--glow);
+  }
+
+  /* Range zones */
+  .zone-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 5px;
+  }
+  .zone-label {
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    color: var(--text-muted);
+  }
+
+  /* ─── Status / GPS Indicator ─────────────────────────────── */
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+
+  .gps-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 6px #22c55e;
+    animation: pulse-dot 1.5s ease-in-out infinite;
+  }
+
+  .gps-dot.off { background: #ef4444; box-shadow: 0 0 6px #ef4444; animation: none; }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  /* ─── Control Buttons ────────────────────────────────────── */
+  .controls {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .ctrl-btn {
+    flex: 1;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .ctrl-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .ctrl-btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+    box-shadow: 0 4px 20px var(--glow);
+  }
+
+  .ctrl-btn.primary:hover { filter: brightness(1.1); }
+
+  /* ─── Unit Toggle ────────────────────────────────────────── */
+  .unit-toggle {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  .unit-opt {
+    padding: 8px 18px;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    border: none;
+    background: none;
+  }
+
+  .unit-opt.active {
+    background: var(--accent);
+    color: #000;
+  }
+
+  /* ─── Footer ─────────────────────────────────────────────── */
+  footer {
+    width: 100%;
+    max-width: 480px;
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    transition: border-color var(--trans);
+  }
+
+  .footer-copy {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-align: center;
+    letter-spacing: 0.05em;
+  }
+
+  .footer-rights {
+    font-family: var(--font-body);
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    opacity: 0.6;
+    text-align: center;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* ─── Accuracy badge ─────────────────────────────────────── */
+  .acc-badge {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px 8px;
+    color: var(--text-muted);
+  }
+
+  /* ─── Animations ─────────────────────────────────────────── */
+  @keyframes spin-in {
+    from { opacity: 0; transform: scale(0.9) rotate(-5deg); }
+    to   { opacity: 1; transform: scale(1) rotate(0deg); }
+  }
+
+  .dial-wrap { animation: spin-in 0.5s cubic-bezier(.34,1.56,.64,1); }
+
+  /* ─── Needle Glow pulse when fast ───────────────────────────*/
+  .needle-line { transition: stroke var(--trans); }
+
+  /* ─── Scrollbar ──────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 0; background: transparent; }
+  * { scrollbar-width: none; -ms-overflow-style: none; }
+</style>
+</head>
+<body>
+
+<!-- ───────────────── HEADER ───────────────────────────────── -->
+<header>
+  <div class="logo">
+    Speedo<span>Real-time velocity</span>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+    <div class="theme-cluster">
+      <button class="theme-btn" data-t="light">☀ Light</button>
+      <button class="theme-btn active" data-t="dark">◐ Dark</button>
+      <button class="theme-btn" data-t="oled">⬛ OLED</button>
+      <button class="theme-btn" data-t="hc">⚡ HC</button>
+    </div>
+    <div class="header-actions">
+      <button class="hdr-btn" id="wakeLockBtn" title="Keep screen on">☀️</button>
+      <button class="hdr-btn" id="fullscreenBtn" title="Fullscreen">⛶</button>
+      <button class="hdr-btn" id="settingsBtn" title="Settings">⚙️</button>
+    </div>
+  </div>
+</header>
+
+<!-- ───────────────── MAIN ─────────────────────────────────── -->
+<main>
+
+  <!-- Mode selector -->
+  <div class="mode-row" id="modeRow">
+    <button class="mode-btn active" data-mode="walk">
+      <span class="icon">🚶</span><span class="label">Walk</span>
+    </button>
+    <button class="mode-btn" data-mode="bus">
+      <span class="icon">🚌</span><span class="label">Bus</span>
+    </button>
+    <button class="mode-btn" data-mode="train">
+      <span class="icon">🚂</span><span class="label">Train</span>
+    </button>
+    <button class="mode-btn" data-mode="plane">
+      <span class="icon">✈️</span><span class="label">Plane</span>
+    </button>
+    <button class="mode-btn" data-mode="ship">
+      <span class="icon">🛳️</span><span class="label">Ship</span>
+    </button>
+    <button class="mode-btn" data-mode="car">
+      <span class="icon">🚗</span><span class="label">Car</span>
+    </button>
+    <button class="mode-btn" data-mode="rickshaw">
+      <span class="icon">🚲</span><span class="label">Rickshaw</span>
+    </button>
+    <button class="mode-btn" data-mode="auto">
+      <span class="icon">🛺</span><span class="label">Auto</span>
+    </button>
+    <button class="mode-btn" data-mode="ferry">
+      <span class="icon">⛴️</span><span class="label">Ferry</span>
+    </button>
+    <button class="mode-btn" data-mode="moto">
+      <span class="icon">🏍️</span><span class="label">Motorbike</span>
+    </button>
+    <button class="mode-btn" data-mode="bicycle">
+      <span class="icon">🚴</span><span class="label">Bicycle</span>
+    </button>
+    <button class="mode-btn" data-mode="jogging">
+      <span class="icon">🏃</span><span class="label">Jogging</span>
+    </button>
+    <button class="mode-btn" data-mode="running">
+      <span class="icon">🏃‍♂️</span><span class="label">Running</span>
+    </button>
+    <button class="mode-btn" data-mode="spacecraft">
+      <span class="icon">🚀</span><span class="label">Spacecraft</span>
+    </button>
+  </div>
+
+  <!-- Unit toggle -->
+  <div style="display:flex; align-items:center; gap:12px;">
+    <div class="unit-toggle">
+      <button class="unit-opt active" data-unit="kmh">km/h</button>
+      <button class="unit-opt" data-unit="mph">mph</button>
+      <button class="unit-opt" data-unit="ms">m/s</button>
+      <button class="unit-opt" data-unit="kn">kn</button>
+    </div>
+  </div>
+
+  <!-- Dial -->
+  <div class="dial-wrap" id="dialWrap">
+    <svg class="dial-svg" id="dialSvg" viewBox="0 0 300 260" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="var(--surface2)"/>
+          <stop offset="100%" stop-color="var(--dial-bg)"/>
+        </radialGradient>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+          <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="glow-strong">
+          <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+          <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+
+      <!-- Outer ring -->
+      <circle cx="150" cy="150" r="145" fill="var(--surface)" stroke="var(--border)" stroke-width="1"/>
+      <!-- Face -->
+      <circle cx="150" cy="150" r="138" fill="url(#bgGrad)"/>
+      <!-- Arc track -->
+      <path id="arcTrack" fill="none" stroke="var(--surface2)" stroke-width="14" stroke-linecap="round"/>
+      <!-- Arc fill (speed) -->
+      <path id="arcFill" fill="none" stroke="var(--accent)" stroke-width="14" stroke-linecap="round" filter="url(#glow)" opacity="0.9"/>
+      <!-- Arc danger zone -->
+      <path id="arcDanger" fill="none" stroke="var(--accent2)" stroke-width="14" stroke-linecap="round" opacity="0.5"/>
+
+      <!-- Tick marks group -->
+      <g id="ticks"></g>
+
+      <!-- Centre hub -->
+      <circle cx="150" cy="150" r="10" fill="var(--accent)" filter="url(#glow)"/>
+      <circle cx="150" cy="150" r="5" fill="var(--bg)"/>
+
+      <!-- Needle -->
+      <g id="needleGroup" transform="rotate(-135, 150, 150)">
+        <line class="needle-line" id="needleLine" x1="150" y1="150" x2="150" y2="42"
+          stroke="var(--needle)" stroke-width="3" stroke-linecap="round" filter="url(#glow-strong)"/>
+        <line x1="150" y1="150" x2="150" y2="185"
+          stroke="var(--needle)" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+      </g>
+    </svg>
+
+    <!-- Speed readout — BELOW the dial, never overlapping needle -->
+    <div class="dial-readout">
+      <div class="speed-value" id="speedValue">0</div>
+      <div class="speed-unit" id="speedUnit">km/h</div>
+      <div class="speed-mode-label" id="speedModeLabel">Walking</div>
+    </div>
+  </div>
+
+  <!-- Speed bar -->
+  <div class="bar-wrap">
+    <div class="bar-header">
+      <span class="bar-title">Speed Intensity</span>
+      <span class="bar-pct" id="barPct">0%</span>
+    </div>
+    <div class="bar-track">
+      <div class="bar-fill" id="barFill" style="width:0%"></div>
+    </div>
+    <div class="zone-labels">
+      <span class="zone-label" id="zoneMin">0</span>
+      <span class="zone-label" id="zoneMid" style="color:var(--accent)">NORMAL</span>
+      <span class="zone-label" id="zoneMax">--</span>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Max Speed</div>
+      <div class="stat-value" id="statMax">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg Speed</div>
+      <div class="stat-value" id="statAvg">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Distance</div>
+      <div class="stat-value" id="statDist">—</div>
+    </div>
+  </div>
+
+  <!-- ── Alert Banner ────────────────────────────────────── -->
+  <div class="alert-banner" id="alertBanner" role="alert" aria-live="assertive">
+    <span class="alert-icon" id="alertIcon">⚠️</span>
+    <span class="alert-text" id="alertText">Speed limit exceeded!</span>
+    <button class="alert-dismiss" id="alertDismiss" aria-label="Dismiss">✕</button>
+  </div>
+
+  <!-- ── Speed Limit Panel ────────────────────────────────── -->
+  <div class="limit-panel">
+    <div class="limit-header">
+      <span class="limit-title">🚦 Speed Limit Alert</span>
+      <label class="limit-toggle" id="limitToggleLabel" aria-label="Enable speed limit">
+        <span id="limitToggleText">Off</span>
+        <div class="toggle-track" id="limitTrack">
+          <div class="toggle-thumb"></div>
+        </div>
+      </label>
+    </div>
+
+    <div class="limit-controls">
+      <div style="display:flex;flex-direction:column;align-items:center;">
+        <div class="limit-value-display disabled" id="limitDisplay">—</div>
+        <div class="limit-unit-label" id="limitUnitLabel">km/h</div>
+      </div>
+      <input type="range" class="limit-slider" id="limitSlider"
+        min="5" max="200" step="5" value="60" disabled aria-label="Speed limit">
+    </div>
+
+    <div class="limit-presets" id="limitPresets">
+      <button class="preset-btn" data-val="30">30</button>
+      <button class="preset-btn" data-val="50">50</button>
+      <button class="preset-btn active" data-val="60">60</button>
+      <button class="preset-btn" data-val="80">80</button>
+      <button class="preset-btn" data-val="100">100</button>
+      <button class="preset-btn" data-val="120">120</button>
+    </div>
+
+    <div class="alert-options">
+      <div class="alert-opt active" id="optVisual" title="Visual flash alert">
+        👁 Visual
+      </div>
+      <div class="alert-opt active" id="optAudio" title="Audio beep alert">
+        🔔 Audio
+      </div>
+      <div class="alert-opt active" id="optVibrate" title="Vibration alert">
+        📳 Vibrate
+      </div>
+    </div>
+  </div>
+
+  <!-- GPS status -->
+  <div class="status-row">
+    <div class="gps-dot off" id="gpsDot"></div>
+    <span id="gpsStatus">GPS: Waiting…</span>
+    <span class="acc-badge" id="accBadge">±— m</span>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="ctrl-btn primary" id="startBtn">▶ Start</button>
+    <button class="ctrl-btn" id="resetBtn">↺ Reset</button>
+  </div>
+
+  <!-- PWA Install Banner -->
+  <div class="pwa-banner" id="pwaBanner">
+    <div class="pwa-icon">📲</div>
+    <div class="pwa-text">
+      <strong>Install Speedometer</strong>
+      <span>Add to home screen for offline use</span>
+    </div>
+    <button class="pwa-install-btn" id="pwaInstallBtn">Install</button>
+    <button class="pwa-dismiss-btn" id="pwaDismissBtn" aria-label="Dismiss">✕</button>
+  </div>
+
+  <!-- Share Trip -->
+  <button class="share-btn" id="shareBtn">
+    <span>📤</span> Share Trip Summary
+  </button>
+
+</main>
+
+<!-- ── Settings Drawer Overlay ──────────────────────────── -->
+<div class="settings-overlay" id="settingsOverlay"></div>
+<div class="settings-drawer" id="settingsDrawer" aria-label="Settings">
+  <div class="drawer-handle"></div>
+  <div class="drawer-header">
+    <span class="drawer-title">⚙️ Settings</span>
+    <button class="drawer-close" id="drawerClose">Close ✕</button>
+  </div>
+  <div class="drawer-body">
+
+    <!-- Theme -->
+    <div class="setting-group">
+      <div class="setting-group-title">🎨 Theme</div>
+      <div class="theme-cluster" style="flex-wrap:wrap;gap:8px;">
+        <button class="theme-btn" data-t="light">☀ Light</button>
+        <button class="theme-btn active" data-t="dark">◐ Dark</button>
+        <button class="theme-btn" data-t="oled">⬛ OLED</button>
+        <button class="theme-btn" data-t="hc">⚡ HC</button>
+      </div>
+    </div>
+
+    <!-- Default preferences -->
+    <div class="setting-group">
+      <div class="setting-group-title">🔧 Default Preferences</div>
+      <div class="setting-row">
+        <div class="setting-label">Default Mode<small>Remembered on next visit</small></div>
+        <select class="setting-select" id="defaultModeSelect">
+          <option value="walk">🚶 Walk</option>
+          <option value="bus">🚌 Bus</option>
+          <option value="train">🚂 Train</option>
+          <option value="plane">✈️ Plane</option>
+          <option value="ship">🛳️ Ship</option>
+          <option value="car">🚗 Car</option>
+          <option value="rickshaw">🚲 Rickshaw</option>
+          <option value="auto">🛺 Auto</option>
+          <option value="ferry">⛴️ Ferry</option>
+          <option value="moto">🏍️ Motorbike</option>
+          <option value="bicycle">🚴 Bicycle</option>
+          <option value="jogging">🏃 Jogging</option>
+          <option value="running">🏃‍♂️ Running</option>
+          <option value="spacecraft">🚀 Spacecraft</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Default Unit<small>Remembered on next visit</small></div>
+        <select class="setting-select" id="defaultUnitSelect">
+          <option value="kmh">km/h</option>
+          <option value="mph">mph</option>
+          <option value="ms">m/s</option>
+          <option value="kn">knots</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Country speed limits -->
+    <div class="setting-group">
+      <div class="setting-group-title">🌍 Country Speed Presets</div>
+      <div style="font-size:0.68rem;color:var(--text-muted);margin-bottom:4px;">Sets urban speed limit for alerts</div>
+      <div class="country-grid" id="countryGrid">
+        <button class="country-btn" data-kmh="50"><span class="cflag">🇮🇳</span><span class="cname">India</span><span class="climit">50 km/h</span></button>
+        <button class="country-btn" data-kmh="50"><span class="cflag">🇬🇧</span><span class="cname">UK</span><span class="climit">48 km/h</span></button>
+        <button class="country-btn" data-kmh="50"><span class="cflag">🇪🇺</span><span class="cname">EU</span><span class="climit">50 km/h</span></button>
+        <button class="country-btn" data-kmh="40"><span class="cflag">🇦🇺</span><span class="cname">Australia</span><span class="climit">40 km/h</span></button>
+        <button class="country-btn" data-kmh="55"><span class="cflag">🇺🇸</span><span class="cname">USA</span><span class="climit">55 km/h</span></button>
+        <button class="country-btn" data-kmh="60"><span class="cflag">🇨🇦</span><span class="cname">Canada</span><span class="climit">60 km/h</span></button>
+        <button class="country-btn" data-kmh="50"><span class="cflag">🇯🇵</span><span class="cname">Japan</span><span class="climit">50 km/h</span></button>
+        <button class="country-btn" data-kmh="50"><span class="cflag">🇩🇪</span><span class="cname">Germany</span><span class="climit">50 km/h</span></button>
+        <button class="country-btn" data-kmh="50"><span class="cflag">🇧🇩</span><span class="cname">Bangladesh</span><span class="climit">50 km/h</span></button>
+      </div>
+    </div>
+
+    <!-- Display & Screen -->
+    <div class="setting-group">
+      <div class="setting-group-title">📱 Display & Screen</div>
+      <div class="setting-row">
+        <div class="setting-label">🔆 Keep Screen On<small>Prevents sleep while tracking</small></div>
+        <label class="limit-toggle" id="wakeLockToggle" aria-label="Wake lock">
+          <span id="wakeLockText">Off</span>
+          <div class="toggle-track" id="wakeLockTrack"><div class="toggle-thumb"></div></div>
+        </label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">⛶ Fullscreen Mode</div>
+        <button class="ctrl-btn" id="fullscreenDrawerBtn" style="flex:0;padding:8px 16px;font-size:0.75rem;">Enter</button>
+      </div>
+    </div>
+
+    <!-- About -->
+    <div class="setting-group">
+      <div class="setting-group-title">ℹ️ About</div>
+      <div style="font-size:0.75rem;color:var(--text-muted);line-height:1.6;">
+        <strong style="color:var(--text);">Speedometer v2.0</strong><br>
+        GPS-powered real-time velocity tracker.<br>
+        © <span class="about-year"></span> Manik Roy. All Rights Reserved.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Footer ──────────────────────────────────────────────── -->
+<footer>
+  <div class="footer-copy">© <span id="footerYear"></span> Manik Roy</div>
+  <div class="footer-rights">All Rights Reserved</div>
+</footer>
+
+<!-- ───────────────── SCRIPT ───────────────────────────────── -->
+<script>
+/* ── Config ─────────────────────────────────────────────────── */
+const MODES = {
+  walk:  { label: 'Walking',  max: 15,   typical: 6,   icon: '🚶' },
+  bus:   { label: 'Bus',      max: 120,  typical: 50,  icon: '🚌' },
+  train: { label: 'Train',    max: 700,  typical: 120, icon: '🚂' },
+  plane: { label: 'Aircraft', max: 15000, typical: 850, icon: '✈️' },
+  ship:  { label: 'Ship',     max: 80,   typical: 35,  icon: '🛳️' },
+  car:   { label: 'Car',      max: 500,  typical: 100, icon: '🚗' },
+  rickshaw: { label: 'Rickshaw', max: 30, typical: 15, icon: '🚲' },
+  auto:  { label: 'Auto',    max: 60,   typical: 30,  icon: '🛺' },
+  ferry: { label: 'Ferry',   max: 80,   typical: 40,  icon: '⛴️' },
+  moto:  { label: 'Motorbike', max: 350, typical: 80, icon: '🏍️' },
+  bicycle: { label: 'Bicycle', max: 80,  typical: 20, icon: '🚴' },
+  jogging: { label: 'Jogging', max: 20,  typical: 8,  icon: '🏃' },
+  running: { label: 'Running', max: 45,     typical: 15,   icon: '🏃‍♂️' },
+  spacecraft: { label: 'Spacecraft', max: 500000, typical: 28000, icon: '🚀' },
+};
+
+const UNITS = {
+  kmh: { label: 'km/h', factor: 3.6,   dp: 1 },
+  mph: { label: 'mph',  factor: 2.2369, dp: 1 },
+  ms:  { label: 'm/s',  factor: 1,     dp: 2 },
+  kn:  { label: 'kn',   factor: 1.9438, dp: 1 },
+};
+
+/* ── State ───────────────────────────────────────────────────── */
+let state = {
+  mode: 'walk',
+  unit: 'kmh',
+  theme: 'dark',
+  running: false,
+  watchId: null,
+  speedMs: 0,
+  maxSpeedMs: 0,
+  totalDist: 0,
+  readings: [],
+  lastPos: null,
+  startTime: null,
+};
+
+/* ── DOM refs ────────────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+const speedValue  = $('speedValue');
+const speedUnit   = $('speedUnit');
+const speedModeLabel = $('speedModeLabel');
+const barFill     = $('barFill');
+const barPct      = $('barPct');
+const zoneMin     = $('zoneMin');
+const zoneMid     = $('zoneMid');
+const zoneMax     = $('zoneMax');
+const statMax     = $('statMax');
+const statAvg     = $('statAvg');
+const statDist    = $('statDist');
+const gpsDot      = $('gpsDot');
+const gpsStatus   = $('gpsStatus');
+const accBadge    = $('accBadge');
+const startBtn    = $('startBtn');
+const resetBtn    = $('resetBtn');
+const needleGroup = $('needleGroup');
+const arcFill     = $('arcFill');
+const arcTrack    = $('arcTrack');
+const arcDanger   = $('arcDanger');
+const ticksG      = $('ticks');
+const footerYear  = $('footerYear');
+
+/* ── Footer year (auto-updating) ────────────────────────────── */
+footerYear.textContent = new Date().getFullYear();
+
+/* ── SVG Helpers ─────────────────────────────────────────────── */
+const CX = 150, CY = 150, R = 112;
+const START_DEG = -135, END_DEG = 135; // 270° arc
+
+function polarToXY(deg, r) {
+  const rad = (deg - 90) * Math.PI / 180;
+  return [CX + r * Math.cos(rad), CY + r * Math.sin(rad)];
+}
+
+function describeArc(startDeg, endDeg, r) {
+  const [x1, y1] = polarToXY(startDeg, r);
+  const [x2, y2] = polarToXY(endDeg, r);
+  const large = endDeg - startDeg > 180 ? 1 : 0;
+  return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
+}
+
+function buildDial() {
+  const mode = MODES[state.mode];
+  const max  = mode.max;
+
+  arcTrack.setAttribute('d', describeArc(START_DEG, END_DEG, R));
+
+  // Danger zone = top 20% of range
+  const dangerFrac = 0.80;
+  const dangerDeg  = START_DEG + dangerFrac * 270;
+  arcDanger.setAttribute('d', describeArc(dangerDeg, END_DEG, R));
+
+  // Ticks
+  ticksG.innerHTML = '';
+  const numMajor = 10;
+  for (let i = 0; i <= numMajor; i++) {
+    const frac = i / numMajor;
+    const deg  = START_DEG + frac * 270;
+    const [x1, y1] = polarToXY(deg, R - 8);
+    const [x2, y2] = polarToXY(deg, R + 6);
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+    line.setAttribute('stroke', 'var(--text-muted)');
+    line.setAttribute('stroke-width', i % 5 === 0 ? '2.5' : '1.2');
+    line.setAttribute('stroke-linecap', 'round');
+    ticksG.appendChild(line);
+
+    // Labels at major ticks
+    if (i % 2 === 0) {
+      const val  = Math.round((frac * max));
+      const disp = convertSpeed(val / 3.6); // val is km/h here, convert
+      const [tx, ty] = polarToXY(deg, R - 26);
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', tx); text.setAttribute('y', ty);
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('dominant-baseline', 'middle');
+      text.setAttribute('fill', 'var(--text-muted)');
+      text.setAttribute('font-family', 'DM Sans, sans-serif');
+      text.setAttribute('font-size', '9');
+      text.textContent = Math.round(disp);
+      ticksG.appendChild(text);
+    }
+  }
+
+  // Zone labels
+  zoneMin.textContent = '0';
+  zoneMax.textContent = Math.round(convertSpeed(max / 3.6));
+  zoneMid.textContent = mode.label.toUpperCase();
+
+  updateNeedle();
+}
+
+function updateNeedle() {
+  const mode    = MODES[state.mode];
+  const maxMs   = mode.max / 3.6; // km/h → m/s
+  const frac    = Math.min(state.speedMs / maxMs, 1);
+  const deg     = START_DEG + frac * 270;
+
+  needleGroup.setAttribute('transform', `rotate(${deg + 135}, 150, 150)`);
+
+  // Arc fill
+  if (frac > 0) {
+    arcFill.setAttribute('d', describeArc(START_DEG, START_DEG + frac * 270, R));
+  } else {
+    arcFill.setAttribute('d', '');
+  }
+
+  // Display
+  const disp = convertSpeed(state.speedMs);
+  speedValue.textContent = disp.toFixed(UNITS[state.unit].dp);
+  speedUnit.textContent  = UNITS[state.unit].label;
+  speedModeLabel.textContent = mode.label;
+
+  // Bar
+  const pct = Math.round(frac * 100);
+  barFill.style.width = pct + '%';
+  barPct.textContent  = pct + '%';
+
+  // Check speed alert
+  checkSpeedAlert(state.speedMs);
+
+  // Stats
+  const maxDisp = convertSpeed(state.maxSpeedMs);
+  statMax.textContent = state.maxSpeedMs > 0 ? maxDisp.toFixed(1) : '—';
+
+  if (state.readings.length > 0) {
+    const avgMs = state.readings.reduce((s, v) => s + v, 0) / state.readings.length;
+    statAvg.textContent = convertSpeed(avgMs).toFixed(1);
+  }
+
+  if (state.totalDist > 0) {
+    const km = state.totalDist / 1000;
+    statDist.textContent = km >= 1 ? km.toFixed(2) + 'k' : state.totalDist.toFixed(0) + 'm';
+  }
+}
+
+function convertSpeed(ms) {
+  return ms * UNITS[state.unit].factor;
+}
+
+/* ── GPS ─────────────────────────────────────────────────────── */
+function startGPS() {
+  if (!navigator.geolocation) {
+    gpsStatus.textContent = 'GPS: Not supported';
+    return;
+  }
+  gpsStatus.textContent = 'GPS: Acquiring…';
+  state.watchId = navigator.geolocation.watchPosition(onGPS, onGPSError, {
+    enableHighAccuracy: true,
+    maximumAge: 0,
+    timeout: 10000,
+  });
+}
+
+function stopGPS() {
+  if (state.watchId !== null) {
+    navigator.geolocation.clearWatch(state.watchId);
+    state.watchId = null;
+  }
+  gpsDot.classList.add('off');
+  gpsStatus.textContent = 'GPS: Stopped';
+}
+
+function onGPS(pos) {
+  gpsDot.classList.remove('off');
+  const acc = pos.coords.accuracy;
+  lastAccuracy = acc;
+  accBadge.textContent = `±${Math.round(acc)}m`;
+  gpsStatus.textContent = `GPS: ${pos.coords.latitude.toFixed(4)}°, ${pos.coords.longitude.toFixed(4)}°`;
+
+  let speedMs = pos.coords.speed;
+  if (speedMs === null || speedMs < 0) speedMs = 0;
+  state.speedMs = speedMs;
+
+  if (speedMs > state.maxSpeedMs) state.maxSpeedMs = speedMs;
+  state.readings.push(speedMs);
+
+  // Distance via Haversine
+  if (state.lastPos) {
+    state.totalDist += haversine(state.lastPos, pos.coords);
+  }
+  state.lastPos = pos.coords;
+
+  updateNeedle();
+}
+
+function onGPSError(err) {
+  gpsDot.classList.add('off');
+  const msgs = { 1: 'Permission denied', 2: 'Position unavailable', 3: 'Timeout' };
+  gpsStatus.textContent = `GPS: ${msgs[err.code] || 'Error'}`;
+  // Fallback: simulate movement for demo
+  simulateSpeed();
+}
+
+/* ── Demo Simulation (fallback) ─────────────────────────────── */
+let simInterval = null;
+let simTarget = 0;
+let simCurrent = 0;
+
+function simulateSpeed() {
+  if (simInterval) return;
+  gpsStatus.textContent = 'GPS: Demo Mode';
+  accBadge.textContent  = '±DEMO';
+  const mode = MODES[state.mode];
+  simTarget = (mode.typical / 3.6) * (0.8 + Math.random() * 0.4);
+
+  simInterval = setInterval(() => {
+    if (!state.running) { clearInterval(simInterval); simInterval = null; return; }
+    // Drift target occasionally
+    if (Math.random() < 0.03) {
+      simTarget = (mode.typical / 3.6) * (0.6 + Math.random() * 0.6);
+    }
+    // Smooth approach
+    simCurrent += (simTarget - simCurrent) * 0.08 + (Math.random() - 0.5) * 0.15;
+    simCurrent = Math.max(0, simCurrent);
+    state.speedMs = simCurrent;
+    if (simCurrent > state.maxSpeedMs) state.maxSpeedMs = simCurrent;
+    state.readings.push(simCurrent);
+    updateNeedle();
+  }, 200);
+}
+
+/* ── Haversine ───────────────────────────────────────────────── */
+function haversine(a, b) {
+  const R = 6371000;
+  const dLat = (b.latitude  - a.latitude)  * Math.PI / 180;
+  const dLon = (b.longitude - a.longitude) * Math.PI / 180;
+  const h = Math.sin(dLat/2)**2 +
+            Math.cos(a.latitude*Math.PI/180) * Math.cos(b.latitude*Math.PI/180) *
+            Math.sin(dLon/2)**2;
+  return R * 2 * Math.asin(Math.sqrt(h));
+}
+
+/* ── Controls ────────────────────────────────────────────────── */
+startBtn.addEventListener('click', () => {
+  if (!state.running) {
+    state.running = true;
+    state.startTime = Date.now();
+    startBtn.textContent = '⏸ Pause';
+    startBtn.classList.add('primary');
+    startGPS();
+  } else {
+    state.running = false;
+    startBtn.textContent = '▶ Resume';
+    stopGPS();
+    if (simInterval) { clearInterval(simInterval); simInterval = null; }
+  }
+});
+
+resetBtn.addEventListener('click', () => {
+  state.running = false;
+  state.speedMs = 0;
+  state.maxSpeedMs = 0;
+  state.totalDist = 0;
+  state.readings = [];
+  state.lastPos = null;
+  simCurrent = 0;
+  stopGPS();
+  if (simInterval) { clearInterval(simInterval); simInterval = null; }
+  startBtn.textContent = '▶ Start';
+  startBtn.classList.add('primary');
+  gpsDot.classList.add('off');
+  gpsStatus.textContent = 'GPS: Waiting…';
+  accBadge.textContent = '±— m';
+  clearOverspeed();
+  statMax.textContent = '—';
+  statAvg.textContent = '—';
+  statDist.textContent = '—';
+  updateNeedle();
+});
+
+/* ── Mode Buttons ────────────────────────────────────────────── */
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.mode = btn.dataset.mode;
+    state.speedMs = 0;
+    simCurrent = 0;
+    simTarget = 0;
+    buildDial();
+  });
+});
+
+/* ── Unit Buttons ────────────────────────────────────────────── */
+document.querySelectorAll('.unit-opt').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.unit-opt').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.unit = btn.dataset.unit;
+    speedUnit.textContent = UNITS[state.unit].label;
+    limitUnitLabel.textContent = UNITS[state.unit].label;
+    syncLimitSliderToUnit();
+    buildDial();
+  });
+});
+
+/* ── Theme Buttons ───────────────────────────────────────────── */
+document.querySelectorAll('.theme-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.theme = btn.dataset.t;
+    document.documentElement.setAttribute('data-theme', state.theme);
+    buildDial(); // refresh SVG colours
+  });
+});
+
+/* ── Alerts & Safety State ───────────────────────────────────── */
+const alertState = {
+  limitEnabled: false,
+  limitKmh: 60,        // always stored in km/h internally
+  visual: true,
+  audio: true,
+  vibrate: true,
+  isOverspeed: false,
+  audioCtx: null,
+  beepInterval: null,
+};
+
+/* ── DOM refs for alert elements ─────────────────────────────── */
+const alertBanner   = $('alertBanner');
+const alertIcon     = $('alertIcon');
+const alertText     = $('alertText');
+const alertDismiss  = $('alertDismiss');
+const limitTrack    = $('limitTrack');
+const limitToggleText = $('limitToggleText');
+const limitDisplay  = $('limitDisplay');
+const limitUnitLabel = $('limitUnitLabel');
+const limitSlider   = $('limitSlider');
+const limitPresets  = $('limitPresets');
+const optVisual     = $('optVisual');
+const optAudio      = $('optAudio');
+const optVibrate    = $('optVibrate');
+const dialSvgEl     = $('dialSvg');
+
+/* ── Speed limit toggle ──────────────────────────────────────── */
+$('limitToggleLabel').addEventListener('click', () => {
+  alertState.limitEnabled = !alertState.limitEnabled;
+  limitTrack.classList.toggle('on', alertState.limitEnabled);
+  limitToggleText.textContent = alertState.limitEnabled ? 'On' : 'Off';
+  limitSlider.disabled = !alertState.limitEnabled;
+  limitDisplay.classList.toggle('disabled', !alertState.limitEnabled);
+  limitDisplay.textContent = alertState.limitEnabled
+    ? Math.round(convertSpeed(alertState.limitKmh / 3.6))
+    : '—';
+  if (!alertState.limitEnabled) clearOverspeed();
+  syncLimitSliderToUnit();
+});
+
+/* ── Slider input ────────────────────────────────────────────── */
+limitSlider.addEventListener('input', () => {
+  // Slider value is always in current display unit — convert to km/h for storage
+  const sliderVal = parseFloat(limitSlider.value);
+  alertState.limitKmh = sliderVal / UNITS[state.unit].factor * 3.6;
+  limitDisplay.textContent = Math.round(sliderVal);
+  syncPresetsHighlight(sliderVal);
+});
+
+/* ── Preset buttons ──────────────────────────────────────────── */
+limitPresets.addEventListener('click', e => {
+  const btn = e.target.closest('.preset-btn');
+  if (!btn || !alertState.limitEnabled) return;
+  // Preset values are in km/h
+  const kmh = parseFloat(btn.dataset.val);
+  alertState.limitKmh = kmh;
+  syncLimitSliderToUnit();
+  syncPresetsHighlight(convertSpeed(kmh / 3.6));
+});
+
+function syncLimitSliderToUnit() {
+  if (!alertState.limitEnabled) return;
+  const dispVal = Math.round(convertSpeed(alertState.limitKmh / 3.6));
+  // Update slider range based on mode max
+  const modeMaxDisp = Math.round(convertSpeed(MODES[state.mode].max / 3.6));
+  limitSlider.max = modeMaxDisp;
+  limitSlider.min = Math.round(convertSpeed(5 / 3.6));
+  limitSlider.step = Math.max(1, Math.round(modeMaxDisp / 40));
+  limitSlider.value = dispVal;
+  limitDisplay.textContent = dispVal;
+  limitUnitLabel.textContent = UNITS[state.unit].label;
+  syncPresetsHighlight(dispVal);
+}
+
+function syncPresetsHighlight(displayVal) {
+  document.querySelectorAll('.preset-btn').forEach(b => {
+    const presetKmh = parseFloat(b.dataset.val);
+    const presetDisp = Math.round(convertSpeed(presetKmh / 3.6));
+    b.classList.toggle('active', presetDisp === Math.round(displayVal));
+  });
+}
+
+/* ── Alert option toggles ────────────────────────────────────── */
+optVisual.addEventListener('click',   () => { alertState.visual  = !alertState.visual;  optVisual.classList.toggle('active', alertState.visual); });
+optAudio.addEventListener('click',    () => { alertState.audio   = !alertState.audio;   optAudio.classList.toggle('active', alertState.audio); if (!alertState.audio) stopBeep(); });
+optVibrate.addEventListener('click',  () => { alertState.vibrate = !alertState.vibrate; optVibrate.classList.toggle('active', alertState.vibrate); });
+
+/* ── Dismiss banner ──────────────────────────────────────────── */
+alertDismiss.addEventListener('click', clearOverspeed);
+
+/* ── Check speed against limit ───────────────────────────────── */
+function checkSpeedAlert(speedMs) {
+  if (!alertState.limitEnabled || !state.running) { clearOverspeed(); return; }
+
+  const limitMs = alertState.limitKmh / 3.6;
+  const over    = speedMs > limitMs;
+
+  if (over && !alertState.isOverspeed) {
+    alertState.isOverspeed = true;
+    triggerOverspeed(speedMs, limitMs);
+  } else if (!over && alertState.isOverspeed) {
+    clearOverspeed();
+  }
+
+  // Low GPS accuracy warning (accuracy > 30m)
+  checkGpsAccuracy();
+}
+
+function triggerOverspeed(speedMs, limitMs) {
+  const dispSpeed = convertSpeed(speedMs).toFixed(1);
+  const dispLimit = Math.round(convertSpeed(limitMs));
+  alertText.textContent = `⚡ ${dispSpeed} ${UNITS[state.unit].label} — Limit: ${dispLimit}`;
+  alertIcon.textContent = '🚨';
+  alertBanner.className = 'alert-banner overspeed show';
+
+  if (alertState.visual)  dialSvgEl.classList.add('overspeed');
+  if (alertState.audio)   startBeep();
+  if (alertState.vibrate && navigator.vibrate) navigator.vibrate([200, 100, 200]);
+}
+
+function clearOverspeed() {
+  alertState.isOverspeed = false;
+  alertBanner.classList.remove('show', 'overspeed', 'gps-warn');
+  dialSvgEl.classList.remove('overspeed');
+  stopBeep();
+}
+
+/* ── Audio beep (Web Audio API) ──────────────────────────────── */
+function getAudioCtx() {
+  if (!alertState.audioCtx) {
+    alertState.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return alertState.audioCtx;
+}
+
+function playBeep() {
+  try {
+    const ctx  = getAudioCtx();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type      = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    gain.gain.setValueAtTime(0.4, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.25);
+  } catch(e) {}
+}
+
+function startBeep() {
+  if (alertState.beepInterval) return;
+  playBeep();
+  alertState.beepInterval = setInterval(playBeep, 1500);
+}
+
+function stopBeep() {
+  if (alertState.beepInterval) {
+    clearInterval(alertState.beepInterval);
+    alertState.beepInterval = null;
+  }
+}
+
+/* ── Low GPS accuracy warning ────────────────────────────────── */
+let lastAccuracy = null;
+function checkGpsAccuracy() {
+  if (lastAccuracy !== null && lastAccuracy > 30 && !alertState.isOverspeed) {
+    alertIcon.textContent = '📡';
+    alertText.textContent = `Low GPS accuracy (±${Math.round(lastAccuracy)}m) — speed may be inaccurate`;
+    alertBanner.className = 'alert-banner gps-warn show';
+  } else if (!alertState.isOverspeed) {
+    alertBanner.classList.remove('show', 'gps-warn');
+  }
+}
+
+/* ── Hook into GPS / updateNeedle ────────────────────────────── */
+// Patch updateNeedle to call checkSpeedAlert
+const _origUpdateNeedle = updateNeedle;
+// We'll call checkSpeedAlert inside updateNeedle directly below:
+
+/* ── Init limit panel unit label ─────────────────────────────── */
+limitUnitLabel.textContent = UNITS[state.unit].label;
+
+/* ════════════════════════════════════════════════════════════
+   BATCH 2 — Settings, PWA, Wake Lock, Fullscreen, Share
+   ════════════════════════════════════════════════════════════ */
+
+/* ── localStorage Persistence ───────────────────────────────── */
+const PREF_KEYS = { mode: 'spd_mode', unit: 'spd_unit', theme: 'spd_theme' };
+
+function savePrefs() {
+  try {
+    localStorage.setItem(PREF_KEYS.mode,  state.mode);
+    localStorage.setItem(PREF_KEYS.unit,  state.unit);
+    localStorage.setItem(PREF_KEYS.theme, state.theme);
+  } catch(e) {}
+}
+
+function loadPrefs() {
+  try {
+    const m = localStorage.getItem(PREF_KEYS.mode);
+    const u = localStorage.getItem(PREF_KEYS.unit);
+    const t = localStorage.getItem(PREF_KEYS.theme);
+    if (m && MODES[m])  state.mode  = m;
+    if (u && UNITS[u])  state.unit  = u;
+    if (t) state.theme = t;
+  } catch(e) {}
+}
+
+/* ── Apply loaded prefs to UI ────────────────────────────────── */
+function applyPrefsToUI() {
+  // Mode buttons
+  document.querySelectorAll('.mode-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === state.mode);
+  });
+  // Unit buttons
+  document.querySelectorAll('.unit-opt').forEach(b => {
+    b.classList.toggle('active', b.dataset.unit === state.unit);
+  });
+  speedUnit.textContent = UNITS[state.unit].label;
+  // Theme
+  document.documentElement.setAttribute('data-theme', state.theme);
+  document.querySelectorAll('.theme-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.t === state.theme);
+  });
+  // Settings selects
+  $('defaultModeSelect').value = state.mode;
+  $('defaultUnitSelect').value = state.unit;
+  // About year
+  document.querySelectorAll('.about-year').forEach(el => el.textContent = new Date().getFullYear());
+}
+
+/* ── Settings Drawer ─────────────────────────────────────────── */
+const settingsOverlay = $('settingsOverlay');
+const settingsDrawer  = $('settingsDrawer');
+
+function openDrawer() {
+  settingsOverlay.classList.add('open');
+  settingsDrawer.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeDrawer() {
+  settingsOverlay.classList.remove('open');
+  settingsDrawer.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+$('settingsBtn').addEventListener('click', openDrawer);
+$('drawerClose').addEventListener('click', closeDrawer);
+settingsOverlay.addEventListener('click', closeDrawer);
+
+/* ── Default mode/unit selects in drawer ─────────────────────── */
+$('defaultModeSelect').addEventListener('change', e => {
+  state.mode = e.target.value;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === state.mode));
+  state.speedMs = 0; simCurrent = 0; simTarget = 0;
+  savePrefs(); buildDial();
+});
+
+$('defaultUnitSelect').addEventListener('change', e => {
+  state.unit = e.target.value;
+  document.querySelectorAll('.unit-opt').forEach(b => b.classList.toggle('active', b.dataset.unit === state.unit));
+  speedUnit.textContent = UNITS[state.unit].label;
+  limitUnitLabel.textContent = UNITS[state.unit].label;
+  syncLimitSliderToUnit();
+  savePrefs(); buildDial();
+});
+
+/* ── Theme buttons (both header area & drawer) ───────────────── */
+document.querySelectorAll('.theme-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+    // Activate all buttons with same data-t (there may be duplicates in drawer)
+    document.querySelectorAll(`.theme-btn[data-t="${btn.dataset.t}"]`).forEach(b => b.classList.add('active'));
+    state.theme = btn.dataset.t;
+    document.documentElement.setAttribute('data-theme', state.theme);
+    savePrefs(); buildDial();
+  });
+});
+
+/* ── Country Speed Presets ───────────────────────────────────── */
+$('countryGrid').addEventListener('click', e => {
+  const btn = e.target.closest('.country-btn');
+  if (!btn) return;
+  const kmh = parseFloat(btn.dataset.kmh);
+  alertState.limitKmh = kmh;
+  // Auto-enable limit if not already on
+  if (!alertState.limitEnabled) {
+    alertState.limitEnabled = true;
+    $('limitTrack').classList.add('on');
+    $('limitToggleText').textContent = 'On';
+    $('limitSlider').disabled = false;
+    $('limitDisplay').classList.remove('disabled');
+  }
+  syncLimitSliderToUnit();
+  // Highlight selected country
+  document.querySelectorAll('.country-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  closeDrawer();
+});
+
+/* ── Wake Lock ───────────────────────────────────────────────── */
+let wakeLock = null;
+let wakeLockEnabled = false;
+
+async function requestWakeLock() {
+  try {
+    if (!('wakeLock' in navigator)) return;
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLockEnabled = true;
+    $('wakeLockBtn').classList.add('active');
+    $('wakeLockTrack').classList.add('on');
+    $('wakeLockText').textContent = 'On';
+    wakeLock.addEventListener('release', () => {
+      wakeLockEnabled = false;
+      $('wakeLockBtn').classList.remove('active');
+      $('wakeLockTrack').classList.remove('on');
+      $('wakeLockText').textContent = 'Off';
+    });
+  } catch(e) {
+    // Blocked by permissions policy (sandboxed iframe, etc.) — hide the feature silently
+    $('wakeLockBtn').style.display = 'none';
+    const wakeRow = $('wakeLockToggle')?.closest('.setting-row');
+    if (wakeRow) wakeRow.style.display = 'none';
+  }
+}
+
+async function releaseWakeLock() {
+  if (wakeLock) { await wakeLock.release(); wakeLock = null; }
+  wakeLockEnabled = false;
+  $('wakeLockBtn').classList.remove('active');
+  $('wakeLockTrack').classList.remove('on');
+  $('wakeLockText').textContent = 'Off';
+}
+
+async function toggleWakeLock() {
+  wakeLockEnabled ? await releaseWakeLock() : await requestWakeLock();
+}
+
+$('wakeLockBtn').addEventListener('click', toggleWakeLock);
+$('wakeLockToggle').addEventListener('click', toggleWakeLock);
+
+// Re-acquire wake lock if page becomes visible again
+document.addEventListener('visibilitychange', async () => {
+  if (wakeLockEnabled && document.visibilityState === 'visible') await requestWakeLock();
+});
+
+/* ── Fullscreen ──────────────────────────────────────────────── */
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {});
+    $('fullscreenBtn').textContent = '⊠';
+    $('fullscreenBtn').classList.add('active');
+    $('fullscreenDrawerBtn').textContent = 'Exit';
+  } else {
+    document.exitFullscreen().catch(() => {});
+    $('fullscreenBtn').textContent = '⛶';
+    $('fullscreenBtn').classList.remove('active');
+    $('fullscreenDrawerBtn').textContent = 'Enter';
+  }
+}
+$('fullscreenBtn').addEventListener('click', toggleFullscreen);
+$('fullscreenDrawerBtn').addEventListener('click', () => { closeDrawer(); toggleFullscreen(); });
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement) {
+    $('fullscreenBtn').textContent = '⛶';
+    $('fullscreenBtn').classList.remove('active');
+    $('fullscreenDrawerBtn').textContent = 'Enter';
+  }
+});
+
+/* ── Share Trip Summary ──────────────────────────────────────── */
+$('shareBtn').addEventListener('click', async () => {
+  const mode   = MODES[state.mode];
+  const unit   = UNITS[state.unit];
+  const maxSpd = state.maxSpeedMs > 0 ? convertSpeed(state.maxSpeedMs).toFixed(1) : '0';
+  const avgSpd = state.readings.length > 0
+    ? convertSpeed(state.readings.reduce((s,v)=>s+v,0)/state.readings.length).toFixed(1)
+    : '0';
+  const dist   = state.totalDist > 0
+    ? (state.totalDist >= 1000 ? (state.totalDist/1000).toFixed(2)+'km' : state.totalDist.toFixed(0)+'m')
+    : '0m';
+
+  const text = `🚀 Trip Summary — ${mode.icon} ${mode.label}
+📏 Distance: ${dist}
+⚡ Max Speed: ${maxSpd} ${unit.label}
+📊 Avg Speed: ${avgSpd} ${unit.label}
+📅 ${new Date().toLocaleString()}
+— Tracked with Speedometer by Manik Roy`;
+
+  if (navigator.share) {
+    try { await navigator.share({ title: 'My Trip Summary', text }); return; } catch(e) {}
+  }
+  // Fallback: copy to clipboard
+  try {
+    await navigator.clipboard.writeText(text);
+    $('shareBtn').innerHTML = '<span>✅</span> Copied to clipboard!';
+    setTimeout(() => { $('shareBtn').innerHTML = '<span>📤</span> Share Trip Summary'; }, 2500);
+  } catch(e) {
+    alert(text);
+  }
+});
+
+/* ── PWA: Manifest loaded from manifest.json (real file) ─────── */
+// manifest.json is referenced in <head> — no JS needed
+
+/* ── PWA: beforeinstallprompt ────────────────────────────────── */
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  $('pwaBanner').classList.add('show');
+});
+
+$('pwaInstallBtn').addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  $('pwaBanner').classList.remove('show');
+});
+
+$('pwaDismissBtn').addEventListener('click', () => {
+  $('pwaBanner').classList.remove('show');
+  deferredPrompt = null;
+});
+
+window.addEventListener('appinstalled', () => {
+  $('pwaBanner').classList.remove('show');
+});
+
+/* ── Service Worker ──────────────────────────────────────────── */
+/* Uses blob URL in sandboxed previews; real sw.js in production  */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    const swCode = `
+const CACHE_NAME = 'speedometer-v2';
+const FONT_CACHE = 'speedometer-fonts-v1';
+const CORE_ASSETS = ['./', './index.html', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
+self.addEventListener('install', e => e.waitUntil(caches.open(CACHE_NAME).then(c => { try { return c.addAll(CORE_ASSETS); } catch(e){ return; } }).then(() => self.skipWaiting())));
+self.addEventListener('activate', e => e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME && k !== FONT_CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())));
+self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
+  if (url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('fonts.gstatic.com')) {
+    e.respondWith(caches.open(FONT_CACHE).then(c => c.match(e.request).then(r => r || fetch(e.request).then(res => { c.put(e.request, res.clone()); return res; }))));
+    return;
+  }
+  if (url.origin === self.location.origin) {
+    e.respondWith(caches.match(e.request).then(r => r || fetch(e.request).then(res => { if (res.ok) caches.open(CACHE_NAME).then(c => c.put(e.request, res.clone())); return res; }).catch(() => e.request.mode === 'navigate' ? caches.match('./index.html') : undefined)));
+    return;
+  }
+  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+});
+self.addEventListener('message', e => { if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting(); });
+`;
+    try {
+      await navigator.serviceWorker.register('./sw.js');
+    } catch (e) {
+      try {
+        const blob = new Blob([swCode], { type: 'application/javascript' });
+        const url  = URL.createObjectURL(blob);
+        await navigator.serviceWorker.register(url);
+      } catch (e2) { /* SW not available in this environment */ }
+    }
+  });
+}
+
+/* ── Save prefs on mode/unit button clicks (patch existing listeners) */
+// Mode buttons — patch to also save
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => { savePrefs(); $('defaultModeSelect').value = state.mode; });
+});
+document.querySelectorAll('.unit-opt').forEach(btn => {
+  btn.addEventListener('click', () => { savePrefs(); $('defaultUnitSelect').value = state.unit; });
+});
+
+/* ── Init ────────────────────────────────────────────────────── */
+loadPrefs();
+applyPrefsToUI();
+syncLimitSliderToUnit();
+buildDial();
+</script>
+</body>
+</html>
